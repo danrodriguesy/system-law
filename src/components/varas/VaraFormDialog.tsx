@@ -50,6 +50,7 @@ interface VaraFormDialogProps {
 
 export function VaraFormDialog({ editData, trigger, onCreated, externalOpen, onExternalOpenChange }: VaraFormDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false);
+  const [cepLoading, setCepLoading] = useState(false);
   const controlled = externalOpen !== undefined;
   const open = controlled ? externalOpen : internalOpen;
   const setOpen = (v: boolean) => {
@@ -67,6 +68,27 @@ export function VaraFormDialog({ editData, trigger, onCreated, externalOpen, onE
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
+
+  const cepValue = watch("cep");
+
+  // Auto-fill via CEP
+  useEffect(() => {
+    const rawCep = cepValue?.replace(/\D/g, "");
+    if (rawCep && rawCep.length === 8) {
+      setCepLoading(true);
+      fetch(`https://viacep.com.br/ws/${rawCep}/json/`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (!data.erro) {
+            setValue("endereco", data.logradouro || "");
+            setValue("cidade", data.localidade || "");
+            setValue("estado", data.uf || "");
+          }
+        })
+        .catch(() => {})
+        .finally(() => setCepLoading(false));
+    }
+  }, [cepValue, setValue]);
 
   useEffect(() => {
     if (open && editData) {
@@ -144,28 +166,19 @@ export function VaraFormDialog({ editData, trigger, onCreated, externalOpen, onE
               <Label>Local</Label>
               <Input {...register("local_real")} />
             </div>
-            <div className="space-y-1.5 md:col-span-2">
-              <Label>Endereço</Label>
-              <Input {...register("endereco")} />
-            </div>
             <div className="space-y-1.5">
-              <Label>Cidade</Label>
-              <Input {...register("cidade")} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>UF</Label>
-                <Input maxLength={2} {...register("estado")} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>CEP</Label>
+              <Label>CEP</Label>
+              <div className="relative">
                 <Input
                   value={watch("cep") || ""}
                   onChange={(e) => setValue("cep", formatCep(e.target.value))}
                   placeholder="00000-000"
                 />
-                {errors.cep && <p className="text-xs text-destructive">{errors.cep.message}</p>}
+                {cepLoading && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                )}
               </div>
+              {errors.cep && <p className="text-xs text-destructive">{errors.cep.message}</p>}
             </div>
             <div className="space-y-1.5">
               <Label>Telefone</Label>
@@ -174,6 +187,18 @@ export function VaraFormDialog({ editData, trigger, onCreated, externalOpen, onE
                 onChange={(e) => setValue("telefone", formatTelefone(e.target.value))}
                 placeholder="(00) 00000-0000"
               />
+            </div>
+            <div className="space-y-1.5 md:col-span-2">
+              <Label>Endereço</Label>
+              <Input {...register("endereco")} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Cidade</Label>
+              <Input {...register("cidade")} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>UF</Label>
+              <Input maxLength={2} {...register("estado")} />
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
