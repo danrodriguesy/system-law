@@ -60,12 +60,14 @@ export type Database = {
           cargo: string | null
           cep: string | null
           cidade: string | null
+          complemento: string | null
           created_at: string
           data_distribuicao: string | null
           endereco: string | null
           estado: string | null
           id: string
           nome_cliente: string
+          numero: string | null
           observacao: string | null
           pasta: string | null
           reclamado: string | null
@@ -78,12 +80,14 @@ export type Database = {
           cargo?: string | null
           cep?: string | null
           cidade?: string | null
+          complemento?: string | null
           created_at?: string
           data_distribuicao?: string | null
           endereco?: string | null
           estado?: string | null
           id?: string
           nome_cliente: string
+          numero?: string | null
           observacao?: string | null
           pasta?: string | null
           reclamado?: string | null
@@ -96,12 +100,14 @@ export type Database = {
           cargo?: string | null
           cep?: string | null
           cidade?: string | null
+          complemento?: string | null
           created_at?: string
           data_distribuicao?: string | null
           endereco?: string | null
           estado?: string | null
           id?: string
           nome_cliente?: string
+          numero?: string | null
           observacao?: string | null
           pasta?: string | null
           reclamado?: string | null
