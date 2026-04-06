@@ -87,7 +87,7 @@ const Agenda = () => {
                     <td className="p-3 font-medium">{(a.clientes as any)?.nome_cliente || "—"}</td>
                     <td className="p-3">{a.processo || "—"}</td>
                     <td className="p-3">{a.junta || "—"}</td>
-                    <td className="p-3">{a.data_distribuicao ? format(new Date(a.data_distribuicao), "dd/MM/yyyy") : "—"}</td>
+                    <td className="p-3">{a.data_distribuicao ? a.data_distribuicao.replace(/(\d{4})-(\d{2})-(\d{2})/, "$3/$2/$1") : "—"}</td>
                     <td className="p-3">
                       <div className="flex items-center justify-end gap-1">
                         <AgendaFormDialog
@@ -133,7 +133,7 @@ const Agenda = () => {
                 </div>
                 {a.data_distribuicao && (
                   <p className="text-xs text-muted-foreground">
-                    Distribuição: {format(new Date(a.data_distribuicao), "dd/MM/yyyy")}
+                    Distribuição: {a.data_distribuicao.replace(/(\d{4})-(\d{2})-(\d{2})/, "$3/$2/$1")}
                   </p>
                 )}
               </div>

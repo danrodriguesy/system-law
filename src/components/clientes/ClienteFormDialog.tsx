@@ -31,6 +31,8 @@ const clienteSchema = z.object({
   nome_cliente: z.string().min(1, "Nome é obrigatório").max(200),
   reclamado: z.string().optional(),
   endereco: z.string().optional(),
+  numero: z.string().optional(),
+  complemento: z.string().optional(),
   cidade: z.string().optional(),
   estado: z.string().max(2).optional(),
   cep: z.string().regex(/^\d{5}-?\d{3}$/, "CEP inválido").optional().or(z.literal("")),
@@ -62,6 +64,13 @@ const formatTelefone = (value: string) => {
   return nums;
 };
 
+const formatMoeda = (value: string) => {
+  const nums = value.replace(/\D/g, "");
+  if (!nums) return "";
+  const floatVal = parseFloat(nums) / 100;
+  return floatVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
 export function ClienteFormDialog({ editData, trigger }: ClienteFormDialogProps) {
   const [open, setOpen] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
@@ -89,13 +98,15 @@ export function ClienteFormDialog({ editData, trigger }: ClienteFormDialogProps)
         nome_cliente: editData.nome_cliente || "",
         reclamado: editData.reclamado || "",
         endereco: editData.endereco || "",
+        numero: editData.numero || "",
+        complemento: editData.complemento || "",
         cidade: editData.cidade || "",
         estado: editData.estado || "",
         cep: editData.cep || "",
         telefone: editData.telefone || "",
         observacao: editData.observacao || "",
         cargo: editData.cargo || "",
-        valor_da_causa: editData.valor_da_causa?.toString() || "",
+        valor_da_causa: editData.valor_da_causa != null ? formatMoeda(Math.round(editData.valor_da_causa * 100).toString()) : "",
         data_distribuicao: editData.data_distribuicao || "",
       });
     } else if (open && !editData) {
@@ -131,13 +142,15 @@ export function ClienteFormDialog({ editData, trigger }: ClienteFormDialogProps)
         nome_cliente: data.nome_cliente,
         reclamado: data.reclamado || null,
         endereco: data.endereco || null,
+        numero: data.numero || null,
+        complemento: data.complemento || null,
         cidade: data.cidade || null,
         estado: data.estado || null,
         cep: data.cep || null,
         telefone: data.telefone || null,
         observacao: data.observacao || null,
         cargo: data.cargo || null,
-        valor_da_causa: data.valor_da_causa ? parseFloat(data.valor_da_causa) : null,
+        valor_da_causa: data.valor_da_causa ? parseFloat(data.valor_da_causa.replace(/\./g, "").replace(",", ".")) : null,
         data_distribuicao: data.data_distribuicao || null,
       };
       if (isEdit) {
@@ -222,6 +235,14 @@ export function ClienteFormDialog({ editData, trigger }: ClienteFormDialogProps)
               <Input id="endereco" {...register("endereco")} />
             </div>
             <div className="space-y-1.5">
+              <Label htmlFor="numero">Número</Label>
+              <Input id="numero" {...register("numero")} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="complemento">Complemento</Label>
+              <Input id="complemento" {...register("complemento")} />
+            </div>
+            <div className="space-y-1.5">
               <Label htmlFor="cidade">Cidade</Label>
               <Input id="cidade" {...register("cidade")} />
             </div>
@@ -243,7 +264,13 @@ export function ClienteFormDialog({ editData, trigger }: ClienteFormDialogProps)
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="valor_da_causa">Valor da Causa</Label>
-              <Input id="valor_da_causa" type="number" step="0.01" {...register("valor_da_causa")} />
+              <Input
+                id="valor_da_causa"
+                inputMode="numeric"
+                placeholder="0,00"
+                value={watch("valor_da_causa") || ""}
+                onChange={(e) => setValue("valor_da_causa", formatMoeda(e.target.value))}
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="data_distribuicao">Data de Distribuição</Label>

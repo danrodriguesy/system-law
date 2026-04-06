@@ -24,7 +24,7 @@ export function ClienteDetailModal({ open, onOpenChange, cliente }: ClienteDetai
     { label: "CEP", value: cliente.cep, icon: MapPin },
     { label: "Telefone", value: cliente.telefone, icon: Phone },
     { label: "Valor da Causa", value: cliente.valor_da_causa != null ? formatCurrency(cliente.valor_da_causa) : null, icon: DollarSign },
-    { label: "Data de Distribuição", value: cliente.data_distribuicao ? format(new Date(cliente.data_distribuicao), "dd/MM/yyyy") : null, icon: Calendar },
+    { label: "Data de Distribuição", value: cliente.data_distribuicao ? cliente.data_distribuicao.replace(/(\d{4})-(\d{2})-(\d{2})/, "$3/$2/$1") : null, icon: Calendar },
     { label: "Observação", value: cliente.observacao, icon: MessageSquare },
   ];
 
@@ -41,7 +41,7 @@ export function ClienteDetailModal({ open, onOpenChange, cliente }: ClienteDetai
             <div>
               <span className="block">{cliente.nome_cliente}</span>
               <span className="text-xs font-normal text-muted-foreground">
-                Cadastrado em {format(new Date(cliente.created_at), "dd/MM/yyyy")}
+                Cadastrado em {cliente.created_at ? format(new Date(cliente.created_at), "dd/MM/yyyy") : "—"}
               </span>
             </div>
           </DialogTitle>
