@@ -152,14 +152,35 @@ export function CompromissoFormDialog({ editData, trigger }: CompromissoFormDial
         const { error } = await supabase.from("compromissos").update(payload).eq("id", editData.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("compromissos").insert(payload);
+        // 1. Cria o compromisso
+        const { data: newComp, error } = await supabase
+          .from("compromissos")
+          .insert(payload)
+          .select("id, cliente_id")
+          .single();
+
         if (error) throw error;
+
+        // 2. Cria a resposta vinculada automaticamente
+        const { error: respError } = await supabase
+          .from("respostas_compromisso")
+          .insert({
+            user_id: user!.id,
+            cliente_id: newComp.cliente_id,
+            compromisso_id: newComp.id,
+            descricao_resposta: data.status || null,
+            data_registro: data.data ? new Date(data.data).toISOString() : new Date().toISOString(),
+          });
+
+        if (respError) throw respError;
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["compromissos"] });
       queryClient.invalidateQueries({ queryKey: ["compromissos-count"] });
       queryClient.invalidateQueries({ queryKey: ["compromissos-today"] });
+      queryClient.invalidateQueries({ queryKey: ["respostas"] });
+      queryClient.invalidateQueries({ queryKey: ["respostas-count"] });
       toast({ title: isEdit ? "Compromisso atualizado com sucesso!" : "Compromisso cadastrado com sucesso!" });
       reset();
       setOpen(false);

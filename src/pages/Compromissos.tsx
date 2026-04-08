@@ -20,6 +20,7 @@ const Compromissos = () => {
   const [respostaModal, setRespostaModal] = useState<any>(null);
   const [respostaText, setRespostaText] = useState("");
   const [respostaDataHora, setRespostaDataHora] = useState("");
+  const [printModal, setPrintModal] = useState<any>(null);
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -36,8 +37,7 @@ const Compromissos = () => {
     },
   });
 
-  // Fetch all respostas for the report
-  // Fetch respostas for the selected compromisso
+  // Fetch respostas for the selected compromisso (modal de resposta)
   const { data: compromissoRespostas = [] } = useQuery({
     queryKey: ["respostas-compromisso", respostaModal?.id],
     queryFn: async () => {
@@ -55,6 +55,26 @@ const Compromissos = () => {
       return data;
     },
     enabled: !!respostaModal?.id,
+  });
+
+  // Fetch respostas for the print modal
+  const { data: printRespostas = [] } = useQuery({
+    queryKey: ["respostas-print", printModal?.id],
+    queryFn: async () => {
+      if (!printModal?.id) return [];
+      const { data, error } = await supabase
+        .from("respostas_compromisso")
+        .select(`
+          *,
+          clientes (pasta, nome_cliente, reclamado),
+          compromissos (processo, juntas (jcj_real))
+        `)
+        .eq("compromisso_id", printModal.id)
+        .order("data_registro", { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!printModal?.id,
   });
 
   const respostaMutation = useMutation({
@@ -82,6 +102,142 @@ const Compromissos = () => {
     },
   });
 
+  const handlePrint = () => {
+    if (!printModal) return;
+
+    const cliente = printModal.clientes as any;
+    const junta = printModal.juntas as any;
+
+    const respostasHTML = printRespostas.map((r: any) => `
+      <tr>
+        <td style="padding: 8px; border: 1px solid #ddd; font-size: 12px;">${r.data_registro ? format(new Date(r.data_registro), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : "—"}</td>
+        <td style="padding: 8px; border: 1px solid #ddd; font-size: 12px;">${r.descricao_resposta || "Sem descrição"}</td>
+      </tr>
+    `).join("");
+
+    const printWindow = document.createElement("div");
+    printWindow.innerHTML = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Compromisso e Respostas - ${cliente?.nome_cliente || ""}</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              margin: 20px;
+              color: #333;
+            }
+            h1 {
+              font-size: 20px;
+              margin-bottom: 20px;
+              border-bottom: 2px solid #333;
+              padding-bottom: 10px;
+            }
+            .info-grid {
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 15px;
+              margin-bottom: 30px;
+              padding: 15px;
+              background: #f9f9f9;
+              border-radius: 8px;
+            }
+            .info-item {
+              font-size: 14px;
+            }
+            .info-label {
+              font-size: 11px;
+              color: #666;
+              margin-bottom: 4px;
+            }
+            .info-value {
+              font-weight: 600;
+            }
+            h2 {
+              font-size: 16px;
+              margin-bottom: 15px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 10px;
+            }
+            th {
+              background: #f5f5f5;
+              padding: 10px 8px;
+              text-align: left;
+              font-size: 13px;
+              font-weight: 600;
+              border: 1px solid #ddd;
+            }
+            td {
+              padding: 8px;
+              border: 1px solid #ddd;
+              font-size: 12px;
+              vertical-align: top;
+            }
+            tr:nth-child(even) {
+              background: #fafafa;
+            }
+            @media print {
+              body {
+                margin: 10px;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Compromisso e Respostas</h1>
+          <div class="info-grid">
+            <div class="info-item">
+              <div class="info-label">Pasta</div>
+              <div class="info-value">${cliente?.pasta || "—"}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Cliente</div>
+              <div class="info-value">${cliente?.nome_cliente || "—"}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Vara</div>
+              <div class="info-value">${junta?.jcj_real || "—"}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Processo</div>
+              <div class="info-value">${printModal.processo || "—"}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Data/Hora</div>
+              <div class="info-value">${printModal.data ? format(new Date(printModal.data), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : "—"}</div>
+            </div>
+          </div>
+          <h2>Respostas (${printRespostas.length})</h2>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 150px;">Data Registro</th>
+                <th>Resposta</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${respostasHTML || "<tr><td colspan='2' style='text-align: center; padding: 20px;'>Nenhuma resposta registrada.</td></tr>"}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+
+    const newWindow = window.open("", "_blank");
+    if (newWindow) {
+      newWindow.document.write(printWindow.innerHTML);
+      newWindow.document.close();
+      newWindow.focus();
+      setTimeout(() => {
+        newWindow.print();
+        newWindow.close();
+      }, 250);
+    }
+  };
+
   const filtered = compromissos.filter((c) => {
     const term = search.toLowerCase();
     const clienteName = (c.clientes as any)?.nome_cliente || "";
@@ -94,10 +250,6 @@ const Compromissos = () => {
       (c.processo && c.processo.toLowerCase().includes(term))
     );
   });
-
-  const handlePrint = () => {
-    window.print();
-  };
 
   return (
     <div className="page-container">
@@ -162,6 +314,15 @@ const Compromissos = () => {
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-white hover:bg-blue-600"
+                          title="Imprimir"
+                          onClick={() => setPrintModal(c)}
+                        >
+                          <Printer className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-8 w-8 text-muted-foreground hover:text-white hover:bg-emerald-600"
                           title="Adicionar Resposta"
                           onClick={() => {
@@ -208,6 +369,14 @@ const Compromissos = () => {
                 )}
                 {c.status && <p className="text-xs text-muted-foreground">Detalhes: {c.status}</p>}
                 <div className="flex items-center gap-1 pt-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-muted-foreground hover:text-white hover:bg-blue-600"
+                    onClick={() => setPrintModal(c)}
+                  >
+                    <Printer className="h-3 w-3 mr-1" /> Imprimir
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -305,9 +474,9 @@ const Compromissos = () => {
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="font-display font-semibold text-sm">Respostas do Compromisso ({compromissoRespostas.length})</h4>
-                      <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5 text-xs h-7">
+                      {/* <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5 text-xs h-7">
                         <Printer className="h-3 w-3" /> Imprimir
-                      </Button>
+                      </Button> */}
                     </div>
                     <div className="space-y-2" id="respostas-report">
                       {/* Print-only header */}
@@ -335,12 +504,12 @@ const Compromissos = () => {
 
                       {/* Print table header */}
                       <div className="hidden print:grid grid-cols-6 gap-2 text-xs font-bold border-b pb-2 mb-2">
-                        <div class="col-span-1">Pasta</div>
-                        <div class="col-span-1">Reclamante</div>
-                        <div class="col-span-1">Reclamada</div>
-                        <div class="col-span-1">Processo</div>
-                        <div class="col-span-1">Data/Hora</div>
-                        <div class="col-span-1">Resposta</div>
+                        <div className="col-span-1">Pasta</div>
+                        <div className="col-span-1">Reclamante</div>
+                        <div className="col-span-1">Reclamada</div>
+                        <div className="col-span-1">Processo</div>
+                        <div className="col-span-1">Data/Hora</div>
+                        <div className="col-span-1">Resposta</div>
                       </div>
 
                       {/* Responses list */}
@@ -422,6 +591,123 @@ const Compromissos = () => {
                   </div>
                 </>
               )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Impressão - Compromisso + Respostas */}
+      <Dialog open={!!printModal} onOpenChange={(v) => { if (!v) setPrintModal(null); }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center justify-between">
+              <span>Imprimir Compromisso e Respostas</span>
+              <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5 print:hidden">
+                <Printer className="h-4 w-4" /> Imprimir
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+
+          {printModal && (
+            <div id="print-modal-content" className="space-y-6">
+              {/* Header com informações do compromisso */}
+              <div className="rounded-lg border bg-card p-4 print:border-0 print:p-0">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="text-xs text-muted-foreground">Pasta</span>
+                    <p className="font-medium mt-0.5">{(printModal.clientes as any)?.pasta || "—"}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground">Cliente</span>
+                    <p className="font-medium mt-0.5">{(printModal.clientes as any)?.nome_cliente || "—"}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground">Vara</span>
+                    <p className="font-medium mt-0.5">{(printModal.juntas as any)?.jcj_real || "—"}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground">Processo</span>
+                    <p className="font-medium mt-0.5">{printModal.processo || "—"}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground">Data/Hora</span>
+                    <p className="font-medium mt-0.5">
+                      {printModal.data
+                        ? format(new Date(printModal.data), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                        : "—"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Lista de Respostas */}
+              <div>
+                <h3 className="font-semibold text-sm mb-3">
+                  Respostas ({printRespostas.length})
+                </h3>
+
+                {printRespostas.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">Nenhuma resposta registrada.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {/* Table header - desktop */}
+                    <div className="hidden md:grid grid-cols-12 gap-2 text-xs font-medium text-muted-foreground px-2 print:hidden">
+                      <div className="col-span-2">Data Registro</div>
+                      <div className="col-span-10">Resposta</div>
+                    </div>
+
+                    {/* Print table header */}
+                    <div className="hidden print:grid grid-cols-5 gap-2 text-xs font-bold border-b pb-2 mb-2">
+                      <div>Pasta</div>
+                      <div>Cliente</div>
+                      <div>Processo</div>
+                      <div>Data/Hora</div>
+                      <div>Resposta</div>
+                    </div>
+
+                    {printRespostas.map((r: any) => (
+                      <div key={r.id} className="rounded-lg border bg-muted/30 p-3 print:border print:p-2 print:mb-3">
+                        {/* Desktop view */}
+                        <div className="hidden md:grid grid-cols-12 gap-2 text-sm print:hidden">
+                          <div className="col-span-2 text-xs text-muted-foreground whitespace-nowrap">
+                            {r.data_registro
+                              ? format(new Date(r.data_registro), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                              : "—"}
+                          </div>
+                          <div className="col-span-10 text-muted-foreground line-clamp-4">
+                            {r.descricao_resposta || "Sem descrição"}
+                          </div>
+                        </div>
+
+                        {/* Print view */}
+                        <div className="hidden print:grid grid-cols-5 gap-2 text-xs">
+                          <div>{(r.clientes as any)?.pasta || "—"}</div>
+                          <div>{(r.clientes as any)?.nome_cliente || "—"}</div>
+                          <div className="truncate">{(r.compromissos as any)?.processo || "—"}</div>
+                          <div>
+                            {r.data_registro
+                              ? format(new Date(r.data_registro), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                              : "—"}
+                          </div>
+                          <div>{r.descricao_resposta || "Sem descrição"}</div>
+                        </div>
+
+                        {/* Mobile view */}
+                        <div className="md:hidden space-y-2 print:hidden">
+                          <div className="text-xs text-muted-foreground">
+                            {r.data_registro
+                              ? format(new Date(r.data_registro), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                              : "—"}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {r.descricao_resposta || "Sem descrição"}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </DialogContent>

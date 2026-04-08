@@ -121,9 +121,38 @@
   aside,
   header,
   [data-sidebar],
-  button {
+  button,
+  .sidebar,
+  .bottom-nav {
     display: none !important;
   }
+
+  /* Esconde tudo por padrão */
+  #root > * {
+    display: none !important;
+  }
+
+  /* Mostra apenas o conteúdo do modal de impressão */
+  #print-modal-content {
+    display: block !important;
+    position: static !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  #print-modal-content > * {
+    display: block !important;
+  }
+
+  /* Ajusta o container do Dialog para impressão */
+  [role="dialog"] {
+    position: static !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
   #respostas-report {
     margin-top: 0 !important;
   }
@@ -140,5 +169,27 @@
     background-color: #f5f5f5 !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  /* Força mostrar elementos com print:grid */
+  .print\:grid {
+    display: grid !important;
+  }
+
+  .print\:block {
+    display: block !important;
+  }
+
+  /* Remove bordas e backgrounds desnecessários */
+  .rounded-lg {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+  }
+
+  /* Ajusta cores para impressão */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
